@@ -3,18 +3,19 @@ import os
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def index():
     message = "hello from opsera this a full devsecops project"
-    return jsonify({
-        "status": "ok",
-        "message": message,
-        "version": os.getenv("APP_VERSION", "dev")
-    })
+    return jsonify(
+        {"status": "ok", "message": message, "version": os.getenv("APP_VERSION", "dev")}
+    )
+
 
 @app.route("/health")
 def health():
     return jsonify({"healthy": True}), 200
+
 
 if __name__ == "__main__":
     print("hello from opsera this a full devsecops project")
