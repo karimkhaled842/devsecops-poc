@@ -167,7 +167,7 @@ jobs:
   # ============================================================
   scan-image:
     name: Scan Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-and-sbom
 
     steps:
@@ -181,17 +181,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # ── Trivy ──────────────────────────────────────────────
-      - name: Install Trivy
-        run: |
-          sudo apt-get install -y wget apt-transport-https gnupg
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | gpg --dearmor \
-            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
-            https://aquasecurity.github.io/trivy-repo/deb \
-            $(lsb_release -sc) main" \
-            | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update && sudo apt-get install -y trivy
+
 
       - name: Trivy — scan filesystem (repo)
         run: |
@@ -229,10 +219,7 @@ jobs:
         continue-on-error: true
 
       # ── Snyk ───────────────────────────────────────────────
-      - name: Install Snyk CLI
-        run: |
-          curl -sL https://static.snyk.io/cli/latest/snyk-linux \
-            -o /usr/local/bin/snyk && chmod +x /usr/local/bin/snyk
+
 
       - name: Snyk — authenticate
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
@@ -260,11 +247,7 @@ jobs:
             --project-name=flask-devsecops || true
 
       # ── StackRox / ACS ─────────────────────────────────────
-      - name: Install roxctl
-        run: |
-          curl -sL https://mirror.openshift.com/pub/rhacs/assets/latest/bin/linux/roxctl \
-            -o /usr/local/bin/roxctl && chmod +x /usr/local/bin/roxctl
-          roxctl version
+
 
       - name: StackRox — scan image
         env:
@@ -305,12 +288,11 @@ jobs:
   # ============================================================
   sign-image:
     name: Sign Image with Cosign
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: scan-image
 
     steps:
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -359,7 +341,7 @@ jobs:
   # ============================================================
   deploy:
     name: Update GitOps & Deploy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: sign-image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -394,10 +376,7 @@ jobs:
 
           git push origin main
 
-      - name: Install ArgoCD CLI
-        run: |
-          curl -sL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
-            -o /usr/local/bin/argocd && chmod +x /usr/local/bin/argocd
+
 
       - name: Sync ArgoCD application
         env:
