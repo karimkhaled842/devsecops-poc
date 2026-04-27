@@ -18,4 +18,4 @@ def health():
 
 if __name__ == "__main__":
     print("hello from opsera this a full devsecops project")
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080, debug=False)  # debug=False is critical
