@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: DOCKER_USERNAME/flask-app:latest   # patched by CI
+          image: karimkhaledopsera/flask-app:latest
           ports:
             - containerPort: 8080
           env:
