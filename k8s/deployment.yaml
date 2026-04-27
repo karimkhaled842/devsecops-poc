@@ -33,6 +33,13 @@ spec:
               port: 8080
             initialDelaySeconds: 10
           securityContext:
+            runAsUser: 10000
             runAsNonRoot: true
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
