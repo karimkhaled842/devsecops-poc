@@ -58,10 +58,10 @@ jobs:
           path: coverage.xml
 
   # ============================================================
-  # JOB 2 — SONARQUBE ANALYSIS + AI REVIEW
+  # JOB 2 — SONARQUBE ANALYSIS
   # ============================================================
   sonarqube:
-    name: SonarQube + AI Code Review
+    name: SonarQube
     runs-on: ubuntu-latest
     needs: lint-and-test
 
@@ -288,11 +288,12 @@ jobs:
   # ============================================================
   sign-image:
     name: Sign Image with Cosign
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: scan-image
 
     steps:
-
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -308,6 +309,7 @@ jobs:
 
           cosign sign --yes \
             --key cosign.key \
+            --tlog-upload=false \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
@@ -319,6 +321,7 @@ jobs:
 
           cosign verify \
             --key cosign.pub \
+            --insecure-ignore-tlog \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             | python3 -m json.tool
 
@@ -341,7 +344,7 @@ jobs:
   # ============================================================
   deploy:
     name: Update GitOps & Deploy
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: sign-image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -376,7 +379,10 @@ jobs:
 
           git push origin main
 
-
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+            -o /usr/local/bin/argocd && chmod +x /usr/local/bin/argocd
 
       - name: Sync ArgoCD application
         env:
