@@ -45,7 +45,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest app/tests/ \
+          python -m pytest app/tests/ \
             --cov=app \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
@@ -80,7 +80,7 @@ jobs:
         run: |
           pip install pytest pytest-cov flask
           pip install -r app/requirements.txt
-          pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
+          python -m pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
