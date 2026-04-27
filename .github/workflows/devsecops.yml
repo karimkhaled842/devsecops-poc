@@ -94,15 +94,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: AI Code Review with Claude
-        uses: anthropics/anthropic-ai-action@v1
-        continue-on-error: true
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          review_type: "security"
-          files: "app/"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
   # ============================================================
   # JOB 3 — BUILD IMAGE + GENERATE SBOM
