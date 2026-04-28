@@ -347,7 +347,7 @@ jobs:
   # ============================================================
   deploy:
     name: Update GitOps & Deploy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: sign-image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -382,10 +382,7 @@ jobs:
 
           git push origin main
 
-      - name: Install ArgoCD CLI
-        run: |
-          curl -sL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
-            -o /usr/local/bin/argocd && chmod +x /usr/local/bin/argocd
+
 
       - name: Sync ArgoCD application
         env:
