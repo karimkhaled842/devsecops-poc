@@ -34,7 +34,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest app/tests/ \
+          python3 -m pytest app/tests/ \
             --cov=app \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
@@ -62,7 +62,7 @@ jobs:
 
       - name: Generate coverage for SonarQube
         run: |
-          python -m pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
+          python3 -m pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
