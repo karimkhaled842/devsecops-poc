@@ -169,6 +169,9 @@ jobs:
     name: Scan Image
     runs-on: self-hosted
     needs: build-and-sbom
+    permissions:
+      security-events: write
+      contents: read
 
     steps:
       - name: Checkout code
@@ -358,7 +361,7 @@ jobs:
       - name: Update image tag in k8s manifest
         run: |
           # Replace the image tag in deployment.yaml
-          sed -i "s|image: ${{ secrets.DOCKER_USERNAME }}/flask-app:.*|image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}|g" \
+          sed -i -E "s|image: .*/flask-app:.*|image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}|g" \
             k8s/deployment.yaml
 
           echo "Updated deployment.yaml:"
