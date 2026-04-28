@@ -17,22 +17,11 @@ jobs:
   # ============================================================
   lint-and-test:
     name: Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov flask
-          pip install -r app/requirements.txt
 
       - name: Run Ruff linter
         run: |
@@ -62,24 +51,17 @@ jobs:
   # ============================================================
   sonarqube:
     name: SonarQube
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: lint-and-test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history for better analysis e
+          fetch-depth: 0  # full history for better analysis
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies & generate coverage
+      - name: Generate coverage for SonarQube
         run: |
-          pip install pytest pytest-cov flask
-          pip install -r app/requirements.txt
           python -m pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
 
       - name: Download coverage report
@@ -94,14 +76,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-
-
   # ============================================================
   # JOB 3 — BUILD IMAGE + GENERATE SBOM
   # ============================================================
   build-and-sbom:
     name: Build Image & Generate SBOM
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: sonarqube
     outputs:
       image_digest: ${{ steps.build.outputs.digest }}
@@ -131,19 +111,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Install Syft (SBOM generator)
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-            | sh -s -- -b /usr/local/bin
-
-      - name: Generate SBOM (SPDX format)
+      - name: Generate SBOM (SPDX + CycloneDX)
         run: |
           syft ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             -o spdx-json=sbom-spdx.json \
             -o cyclonedx-json=sbom-cyclonedx.json \
             -o table
 
-      - name: Generate SBOM (CycloneDX format)
+      - name: Print SBOM summary
         run: |
           echo "SBOM generated in both SPDX and CycloneDX formats"
           echo "Total packages found:"
@@ -184,8 +159,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # ── Trivy ──────────────────────────────────────────────
-
-
       - name: Trivy — scan filesystem (repo)
         run: |
           trivy fs . \
@@ -222,8 +195,6 @@ jobs:
         continue-on-error: true
 
       # ── Snyk ───────────────────────────────────────────────
-
-
       - name: Snyk — authenticate
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
@@ -250,8 +221,6 @@ jobs:
             --project-name=flask-devsecops || true
 
       # ── StackRox / ACS ─────────────────────────────────────
-
-
       - name: StackRox — scan image
         env:
           ROX_API_TOKEN: ${{ secrets.ROX_API_TOKEN }}
@@ -291,13 +260,10 @@ jobs:
   # ============================================================
   sign-image:
     name: Sign Image with Cosign
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: scan-image
 
     steps:
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -336,10 +302,7 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-
-          # Download SBOM artifact
           echo "Attaching SBOM to image..."
-
           rm -f cosign.key
 
   # ============================================================
@@ -360,7 +323,6 @@ jobs:
 
       - name: Update image tag in k8s manifest
         run: |
-          # Replace the image tag in deployment.yaml
           sed -i -E "s|image: .*/flask-app:.*|image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}|g" \
             k8s/deployment.yaml
 
@@ -381,8 +343,6 @@ jobs:
           Commit: ${{ github.sha }}" || echo "No changes to commit"
 
           git push origin main
-
-
 
       - name: Sync ArgoCD application
         env:
