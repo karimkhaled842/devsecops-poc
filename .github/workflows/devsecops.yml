@@ -110,6 +110,7 @@ jobs:
         with:
           context: .
           push: true
+          provenance: false
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_NAME }}:latest
@@ -259,14 +260,13 @@ jobs:
             trivy-results.sarif
             snyk-deps-report.json
             snyk-container-report.json
-
   # ============================================================
   # JOB 5 — SIGN IMAGE WITH COSIGN + VERIFY VIA STACKROX/ACS
   # ============================================================
   sign-image:
-    name: Sign Image & Verify via StackRox
+    name: Sign Image with Cosign
     runs-on: self-hosted
-    needs: scan-image
+    needs: [build-and-sbom, scan-image]
 
     steps:
       - name: Login to Docker Hub
@@ -283,11 +283,12 @@ jobs:
 
           # Explicitly disable both tlog-upload and use-signing-config.
           # In Cosign v3, --use-signing-config defaults to true which conflicts with --tlog-upload=false.
+          # We sign the exact digest output by the build step to ensure immutable reference.
           cosign sign --yes \
             --key cosign.key \
             --tlog-upload=false \
             --use-signing-config=false \
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}
 
           echo "Image signed successfully"
           rm -f cosign.key
@@ -300,7 +301,7 @@ jobs:
             --key cosign.pub \
             --insecure-ignore-tlog=true \
             --insecure-ignore-sct=true \
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }} \
             | python3 -m json.tool
 
           rm -f cosign.pub
