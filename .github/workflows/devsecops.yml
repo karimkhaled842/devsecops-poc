@@ -8,7 +8,7 @@ on:
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/flask-app
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: 1.0.${{ github.run_number }}
 
 jobs:
 
@@ -285,7 +285,6 @@ jobs:
 
           cosign sign --yes \
             --key cosign.key \
-            --tlog-upload=false \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
@@ -297,7 +296,6 @@ jobs:
 
           cosign verify \
             --key cosign.pub \
-            --insecure-ignore-tlog \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             | python3 -m json.tool
 
