@@ -367,7 +367,7 @@ jobs:
 
           git add k8s/deployment.yaml
 
-          git commit -m "ci: update image tag to ${{ env.IMAGE_TAG }}
+          git commit -m "ci: update image tag to ${{ env.IMAGE_TAG }} [skip ci]
 
           Pipeline run: ${{ github.run_number }}
           Triggered by: ${{ github.actor }}
