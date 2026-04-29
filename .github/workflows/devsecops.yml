@@ -300,16 +300,12 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
 
-          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
-            | jq 'del(.rekorTlogUrls)' > signing-config.json
-
           cosign verify \
             --key cosign.pub \
-            --signing-config signing-config.json \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             | python3 -m json.tool
 
-          rm -f cosign.pub signing-config.json
+          rm -f cosign.pub
           echo "Cosign signature verified in registry"
 
       # Signature verification is enforced by StackRox/ACS via the
