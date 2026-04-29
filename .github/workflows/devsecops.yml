@@ -278,16 +278,23 @@ jobs:
       - name: Sign image with Cosign (no transparency log)
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          COSIGN_TLOG_UPLOAD: "false"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
+          # Build a signing config with Rekor (tlog) removed.
+          # This is the ONLY supported way to disable tlog in cosign v3+;
+          # --tlog-upload=false conflicts with --use-signing-config which
+          # cosign applies automatically on self-hosted runners.
+          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
+            | jq 'del(.rekorTlogUrls)' > signing-config.json
+
           cosign sign --yes \
             --key cosign.key \
+            --signing-config signing-config.json \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
-          rm -f cosign.key
+          rm -f cosign.key signing-config.json
 
       # Signature verification is enforced by StackRox/ACS via the
       # "Enforce Image Signature" policy configured with the cosign
@@ -310,7 +317,6 @@ jobs:
       - name: Attach SBOM to image
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          COSIGN_TLOG_UPLOAD: "false"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           echo "Attaching SBOM to image..."
