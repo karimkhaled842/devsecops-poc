@@ -310,11 +310,11 @@ jobs:
           echo "Cosign signature verified in registry"
 
       # Signature verification is enforced by StackRox/ACS via the
-      # "Enforce Image Signature" policy configured with the cosign
+      # "Enforce Image Signature" policy configured with the cosign.
       # public key under Platform Configuration → Signature Integrations.
       # We force a rescan first so ACS picks up the signature written above;
       # without --force it uses the cached pre-signing scan from Job 4.
-      # continue-on-error: ACS admission control is the real enforcement gate
+      # continue-on-error: ACS admission control is the real enforcement gate,
       # at deploy time; this step is informational in CI.
       - name: Verify signature policy via StackRox (roxctl)
         continue-on-error: true
