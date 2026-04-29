@@ -327,7 +327,7 @@ jobs:
           roxctl image scan \
             --endpoint "$ROX_ENDPOINT" \
             --insecure-skip-tls-verify \
-            --image "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
             --force \
             --output json > /dev/null
 
@@ -336,7 +336,7 @@ jobs:
           roxctl image check \
             --endpoint "$ROX_ENDPOINT" \
             --insecure-skip-tls-verify \
-            --image "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
             --output json > roxctl-check.json
           ROX_EXIT=$?
 
