@@ -289,6 +289,7 @@ jobs:
             --key cosign.key \
             --tlog-upload=false \
             --use-signing-config=false \
+            --sign-container-identity="docker.io/${{ env.IMAGE_NAME }}" \
             docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}
 
           echo "Image signed successfully"
