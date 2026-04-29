@@ -283,11 +283,13 @@ jobs:
 
           # Explicitly disable both tlog-upload and use-signing-config.
           # In Cosign v3, --use-signing-config defaults to true which conflicts with --tlog-upload=false.
-          # We sign the exact digest output by the build step to ensure immutable reference.
+          # We explicitly set the container identity to include docker.io.
+          # Cosign defaults to index.docker.io which causes StackRox to reject the signature due to string mismatch.
           cosign sign --yes \
             --key cosign.key \
             --tlog-upload=false \
             --use-signing-config=false \
+            --sign-container-identity="docker.io/${{ env.IMAGE_NAME }},index.docker.io/${{ env.IMAGE_NAME }},${{ env.IMAGE_NAME }}" \
             docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}
 
           echo "Image signed successfully"
@@ -376,7 +378,7 @@ jobs:
 
       - name: Update image tag in k8s manifest
         run: |
-          sed -i -E "s|image: .*/flask-app:.*|image: ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}|g" \
+          sed -i -E "s|image: .*/flask-app:.*|image: docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}|g" \
             k8s/deployment.yaml
 
           echo "Updated deployment.yaml:"
