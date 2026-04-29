@@ -64,11 +64,6 @@ jobs:
         run: |
           python3 -m pytest app/tests/ --cov=app --cov-report=xml:coverage.xml -q
 
-      - name: Port-forward SonarQube
-        run: |
-          kubectl port-forward svc/sonarqube-sonarqube 9000:9000 -n sonarqube &
-          echo $! > /tmp/sonar-pf.pid
-          sleep 8
 
       - name: SonarQube scan
         uses: SonarSource/sonarqube-scan-action@v6
@@ -76,10 +71,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: http://localhost:9000
 
-      - name: Stop port-forward
-        if: always()
-        run: |
-          kill $(cat /tmp/sonar-pf.pid) 2>/dev/null || true
 
   # ============================================================
   # JOB 3 — BUILD IMAGE + GENERATE SBOM
