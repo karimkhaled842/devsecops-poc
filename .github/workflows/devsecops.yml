@@ -261,10 +261,10 @@ jobs:
             snyk-container-report.json
 
   # ============================================================
-  # JOB 5 — SIGN IMAGE WITH COSIGN
+  # JOB 5 — SIGN IMAGE WITH COSIGN + VERIFY VIA STACKROX/ACS
   # ============================================================
   sign-image:
-    name: Sign Image with Cosign
+    name: Sign Image & Verify via StackRox
     runs-on: self-hosted
     needs: scan-image
 
@@ -275,42 +275,42 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Sign image with Cosign (key-based)
+      - name: Sign image with Cosign (no transparency log)
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_TLOG_UPLOAD: "false"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
-          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
-            | jq 'del(.rekorTlogUrls)' > signing-config.json
-
           cosign sign --yes \
             --key cosign.key \
-            --signing-config signing-config.json \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
-          rm -f cosign.key signing-config.json
+          rm -f cosign.key
 
-      - name: Verify image signature
+      # Signature verification is enforced by StackRox/ACS via the
+      # "Enforce Image Signature" policy configured with the cosign
+      # public key under Platform Configuration → Signature Integrations.
+      # roxctl image check below enforces that policy in CI.
+      - name: Verify signature policy via StackRox (roxctl)
+        env:
+          ROX_API_TOKEN: ${{ secrets.ROX_API_TOKEN }}
+          ROX_ENDPOINT: ${{ secrets.ROX_CENTRAL_ENDPOINT }}
         run: |
-          echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
-
-          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
-            | jq 'del(.rekorTlogUrls)' > signing-config.json
-
-          cosign verify \
-            --key cosign.pub \
-            --signing-config signing-config.json \
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+          roxctl image check \
+            --endpoint "$ROX_ENDPOINT" \
+            --insecure-skip-tls-verify \
+            --image "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --output json \
             | python3 -m json.tool
 
-          rm -f cosign.pub signing-config.json
-          echo "Signature verified successfully"
+          echo "StackRox signature policy check passed"
 
       - name: Attach SBOM to image
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_TLOG_UPLOAD: "false"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           echo "Attaching SBOM to image..."
