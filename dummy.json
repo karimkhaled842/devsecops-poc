@@ -1,0 +1,16 @@
+{
+  "id": "io.stackrox.signatureintegration.fdb160bb-b4d6-4c94-bd7f-f828ce409276",
+  "name": "cosign-devsecops",
+  "cosign": {
+    "publicKeys": [
+      {
+        "name": "cosign.pub",
+        "publicKeyPemEnc": "-----BEGIN PUBLIC KEY-----\nHELLO\nWORLD\n-----END PUBLIC KEY-----"
+      }
+    ]
+  },
+  "cosignCertificates": [],
+  "transparencyLog": {
+    "enabled": false
+  }
+}

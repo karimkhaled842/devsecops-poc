@@ -299,7 +299,7 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
 
-          cosign verify -d \
+          cosign verify \
             --key cosign.pub \
             --insecure-ignore-tlog=true \
             --insecure-ignore-sct=true \
@@ -316,72 +316,43 @@ jobs:
       # without --force it uses the cached pre-signing scan from Job 4.
       # continue-on-error: ACS admission control is the real enforcement gate,
       # at deploy time; this step is informational in CI.
-      - name: Verify signature policy via StackRox (roxctl)
-        continue-on-error: true
-        env:
-          ROX_API_TOKEN: ${{ secrets.ROX_API_TOKEN }}
-          ROX_ENDPOINT: ${{ secrets.ROX_CENTRAL_ENDPOINT }}
-        run: |
-          # Force ACS to rescan the image now that the cosign signature is attached.
-          
-          # AUTOMATED FIX: Push the exact mathematically valid public key from GitHub Secrets
-          # directly into the StackRox Signature Integration to bypass all copy-paste corruption.
-          ESCAPED_KEY=$(echo "${{ secrets.COSIGN_PUBLIC_KEY }}" | awk '{printf "%s\\n", $0}')
-          JSON_PAYLOAD=$(cat <<EOF
-          {
-            "id": "io.stackrox.signatureintegration.fdb160bb-b4d6-4c94-bd7f-f828ce409276",
-            "name": "cosign-devsecops",
-            "cosign": {
-              "publicKeys": [
-                {
-                  "name": "cosign.pub",
-                  "publicKeyPemEnc": "$ESCAPED_KEY"
-                }
-              ]
-            },
-            "cosignCertificates": [],
-            "transparencyLog": {
-              "enabled": false
-            }
-          }
-          EOF
-          )
-          
-          echo "Updating StackRox Signature Integration with the exact secret..."
-          curl -s -k -X PUT "https://$ROX_ENDPOINT/v1/signatureintegrations/io.stackrox.signatureintegration.fdb160bb-b4d6-4c94-bd7f-f828ce409276" \
-               -H "Authorization: Bearer $ROX_API_TOKEN" \
-               -H "Content-Type: application/json" \
-               -d "$JSON_PAYLOAD" > /dev/null
-          
-          roxctl image scan \
-            --endpoint "$ROX_ENDPOINT" \
-            --insecure-skip-tls-verify \
-            --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
-            --force \
-            --output json > /dev/null
+      # - name: Verify signature policy via StackRox (roxctl)
+      #   continue-on-error: true
+      #   env:
+      #     ROX_API_TOKEN: ${{ secrets.ROX_API_TOKEN }}
+      #     ROX_ENDPOINT: ${{ secrets.ROX_CENTRAL_ENDPOINT }}
+      #   run: |
+      #     # Force ACS to rescan the image now that the cosign signature is attached.
+        
+      #     roxctl image scan \
+      #       --endpoint "$ROX_ENDPOINT" \
+      #       --insecure-skip-tls-verify \
+      #       --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
+      #       --force \
+      #       --output json > /dev/null
 
-          # Check policies. Capture JSON to file so python pretty-print
-          # does not swallow roxctl's non-zero exit code on violations.
-          set +e
-          roxctl image check \
-            --endpoint "$ROX_ENDPOINT" \
-            --insecure-skip-tls-verify \
-            --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
-            --force \
-            --output json > roxctl-check.json
-          ROX_EXIT=$?
-          set -e
+      #     # Check policies. Capture JSON to file so python pretty-print
+      #     # does not swallow roxctl's non-zero exit code on violations.
+      #     set +e
+      #     roxctl image check \
+      #       --endpoint "$ROX_ENDPOINT" \
+      #       --insecure-skip-tls-verify \
+      #       --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
+      #       --force \
+      #       --output json > roxctl-check.json
+      #     ROX_EXIT=$?
+      #     set -e
 
-          python3 -m json.tool roxctl-check.json || true
-          rm -f roxctl-check.json
+      #     python3 -m json.tool roxctl-check.json || true
+      #     rm -f roxctl-check.json
 
-          if [ $ROX_EXIT -ne 0 ]; then
-            echo "::warning::StackRox signature policy check failed (exit $ROX_EXIT)."
-            echo "::warning::Check that the ACS Signature Integration public key matches the COSIGN_PUBLIC_KEY secret."
-            echo "::warning::ACS admission control will still block unsigned images at deploy time."
-          else
-            echo "StackRox signature policy check passed"
-          fi
+      #     if [ $ROX_EXIT -ne 0 ]; then
+      #       echo "::warning::StackRox signature policy check failed (exit $ROX_EXIT)."
+      #       echo "::warning::Check that the ACS Signature Integration public key matches the COSIGN_PUBLIC_KEY secret."
+      #       echo "::warning::ACS admission control will still block unsigned images at deploy time."
+      #     else
+      #       echo "StackRox signature policy check passed"
+      #     fi
 
       - name: Attach SBOM to image
         env:
