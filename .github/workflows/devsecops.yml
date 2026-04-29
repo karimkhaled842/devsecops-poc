@@ -299,20 +299,34 @@ jobs:
       # Signature verification is enforced by StackRox/ACS via the
       # "Enforce Image Signature" policy configured with the cosign
       # public key under Platform Configuration → Signature Integrations.
-      # roxctl image check below enforces that policy in CI.
+      # We force a rescan first so ACS picks up the signature written above;
+      # without --force it uses the cached pre-signing scan from Job 4.
       - name: Verify signature policy via StackRox (roxctl)
         env:
           ROX_API_TOKEN: ${{ secrets.ROX_API_TOKEN }}
           ROX_ENDPOINT: ${{ secrets.ROX_CENTRAL_ENDPOINT }}
         run: |
+          # Force ACS to rescan the image now that the cosign signature is attached.
+          roxctl image scan \
+            --endpoint "$ROX_ENDPOINT" \
+            --insecure-skip-tls-verify \
+            --image "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --force \
+            --output json > /dev/null
+
+          # Check policies. Capture JSON to file so python pretty-print
+          # does not swallow roxctl's non-zero exit code on violations.
           roxctl image check \
             --endpoint "$ROX_ENDPOINT" \
             --insecure-skip-tls-verify \
             --image "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
-            --output json \
-            | python3 -m json.tool
+            --output json > roxctl-check.json
+          ROX_EXIT=$?
 
-          echo "StackRox signature policy check passed"
+          python3 -m json.tool roxctl-check.json
+          rm -f roxctl-check.json
+
+          exit $ROX_EXIT
 
       - name: Attach SBOM to image
         env:
