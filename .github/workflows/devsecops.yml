@@ -278,7 +278,6 @@ jobs:
       - name: Sign image with Cosign (no transparency log)
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          COSIGN_DOCKER_MEDIA_TYPES: "1"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
@@ -295,8 +294,6 @@ jobs:
           rm -f cosign.key
 
       - name: Verify cosign signature (OCI registry check)
-        env:
-          COSIGN_DOCKER_MEDIA_TYPES: "1"
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
 
@@ -333,14 +330,16 @@ jobs:
 
           # Check policies. Capture JSON to file so python pretty-print
           # does not swallow roxctl's non-zero exit code on violations.
+          set +e
           roxctl image check \
             --endpoint "$ROX_ENDPOINT" \
             --insecure-skip-tls-verify \
             --image "docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}" \
             --output json > roxctl-check.json
           ROX_EXIT=$?
+          set -e
 
-          python3 -m json.tool roxctl-check.json
+          python3 -m json.tool roxctl-check.json || true
           rm -f roxctl-check.json
 
           if [ $ROX_EXIT -ne 0 ]; then
@@ -365,7 +364,7 @@ jobs:
   deploy:
     name: Update GitOps & Deploy
     runs-on: self-hosted
-    needs: sign-image
+    needs: [build-and-sbom, sign-image]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -377,7 +376,7 @@ jobs:
 
       - name: Update image tag in k8s manifest
         run: |
-          sed -i -E "s|image: .*/flask-app:.*|image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}|g" \
+          sed -i -E "s|image: .*/flask-app:.*|image: ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}|g" \
             k8s/deployment.yaml
 
           echo "Updated deployment.yaml:"
@@ -390,7 +389,7 @@ jobs:
 
           git add k8s/deployment.yaml
 
-          git commit -m "ci: update image tag to ${{ env.IMAGE_TAG }} [skip ci]
+          git commit -m "ci: update image digest to ${{ needs.build-and-sbom.outputs.image_digest }} [skip ci]
 
           Pipeline run: ${{ github.run_number }}
           Triggered by: ${{ github.actor }}
