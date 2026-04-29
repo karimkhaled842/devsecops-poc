@@ -281,25 +281,31 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
+          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
+            | jq 'del(.rekorTlogUrls)' > signing-config.json
+
           cosign sign --yes \
             --key cosign.key \
-            --tlog-upload=false \
+            --signing-config signing-config.json \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
-          rm -f cosign.key
+          rm -f cosign.key signing-config.json
 
       - name: Verify image signature
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
 
+          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
+            | jq 'del(.rekorTlogUrls)' > signing-config.json
+
           cosign verify \
             --key cosign.pub \
-            --insecure-ignore-tlog=true \
+            --signing-config signing-config.json \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             | python3 -m json.tool
 
-          rm -f cosign.pub
+          rm -f cosign.pub signing-config.json
           echo "Signature verified successfully"
 
       - name: Attach SBOM to image
