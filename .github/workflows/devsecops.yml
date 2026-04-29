@@ -281,20 +281,16 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
-          # Build a signing config with Rekor (tlog) removed.
-          # This is the ONLY supported way to disable tlog in cosign v3+;
-          # --tlog-upload=false conflicts with --use-signing-config which
-          # cosign applies automatically on self-hosted runners.
-          curl -sf https://raw.githubusercontent.com/sigstore/root-signing/refs/heads/main/targets/signing_config.v0.2.json \
-            | jq 'del(.rekorTlogUrls)' > signing-config.json
-
+          # Explicitly disable both tlog-upload and use-signing-config.
+          # In Cosign v3, --use-signing-config defaults to true which conflicts with --tlog-upload=false.
           cosign sign --yes \
             --key cosign.key \
-            --signing-config signing-config.json \
+            --tlog-upload=false \
+            --use-signing-config=false \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
           echo "Image signed successfully"
-          rm -f cosign.key signing-config.json
+          rm -f cosign.key
 
       - name: Verify cosign signature (OCI registry check)
         run: |
