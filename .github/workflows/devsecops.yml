@@ -278,6 +278,7 @@ jobs:
       - name: Sign image with Cosign (no transparency log)
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_DOCKER_MEDIA_TYPES: "1"
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
 
@@ -288,20 +289,22 @@ jobs:
             --key cosign.key \
             --tlog-upload=false \
             --use-signing-config=false \
-            ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}
+            docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }}
 
           echo "Image signed successfully"
           rm -f cosign.key
 
       - name: Verify cosign signature (OCI registry check)
+        env:
+          COSIGN_DOCKER_MEDIA_TYPES: "1"
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
 
-          cosign verify \
+          cosign verify -d \
             --key cosign.pub \
             --insecure-ignore-tlog=true \
             --insecure-ignore-sct=true \
-            ${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }} \
+            docker.io/${{ env.IMAGE_NAME }}@${{ needs.build-and-sbom.outputs.image_digest }} \
             | python3 -m json.tool
 
           rm -f cosign.pub
