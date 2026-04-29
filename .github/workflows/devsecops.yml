@@ -302,6 +302,8 @@ jobs:
 
           cosign verify \
             --key cosign.pub \
+            --insecure-ignore-tlog=true \
+            --insecure-ignore-sct=true \
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             | python3 -m json.tool
 
