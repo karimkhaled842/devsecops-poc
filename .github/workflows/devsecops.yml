@@ -295,6 +295,14 @@ jobs:
           echo "Image signed successfully"
           rm -f cosign.key
 
+      - name: EXTRACT TRUE PUBLIC KEY FOR STACKROX
+        env:
+          PKEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
+        run: |
+          echo "::warning::YOUR STACKROX PUBLIC KEY IS WRONG. COPY THE KEY BELOW:"
+          echo "Remove the spaces and paste this exact key into StackRox Signature Integration:"
+          echo "$PKEY" | sed 's/./& /g'
+
       - name: Verify cosign signature (OCI registry check)
         run: |
           echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
